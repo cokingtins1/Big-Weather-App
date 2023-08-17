@@ -21,9 +21,6 @@ async function getWeather() {
 		const daily = parseDailyWeather(data)
 		const hourly = parseHourlyWeather(data)
 
-		console.log(data)
-		console.log(current)
-
 		renderWeather({ current, daily, hourly })
 	} catch (error) {
 		console.error("There was an error:", error)
