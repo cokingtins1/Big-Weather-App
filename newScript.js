@@ -21,28 +21,106 @@ async function getWeather() {
 		const response = await fetch(LINK)
 		const data = await response.json()
 
-		const weatherData = parseWeatherData(data) // get more readable/usable data from raw data
+		// const weatherData = parseWeatherData(data) // get more readable/usable data from raw data
 
-		const { current, daily, hourly } = weatherData // deconstruct parsed data into current, daily, and hourly
+		// const { current, daily, hourly } = weatherData // deconstruct parsed data into current, daily, and hourly
 
-		dayMapFunction(daily)
+		const current = parseCurrentWeather(data) // returns object "current"
+		const daily = parseDailyWeather(data)
+		// const hourly = parseHourlyWeather(data)
+		// const dailyArray = parseDailyWeather(data)
+
 		console.log(data)
+		console.log(current.dailyHighFeelsLike)
 
-		renderWeather(weatherData)
+		renderWeather({ current })
 	} catch (error) {
 		console.error("There was an error:", error)
 	}
 }
 
-function parseWeatherData(data) {
-	const { current_weather, daily, hourly } = data
+function getDayofWeek(current) {
+	const weekNames = [
+		"Sunday",
+		"Monday",
+		"Tuesday",
+		"Wednesday",
+		"Thursday",
+		"Friday",
+		"Saturday",
+	]
 
+	const date = new Date(current.currentTime)
+	const weekCode = new Map()
+
+	for (let i = 0; i < 7; i++) {
+		weekCode.set(weekNames[i], i)
+	}
+
+	// return weekNames[date.getDay(current.time)], weekCode
+	return weekCode.get(weekNames[date.getDay(current.currentTime)])
+}
+
+// function parseWeatherData(data) {
+// 	const { current_weather, daily, hourly } = data
+
+// 	const {
+// 		temperature: currentTemp,
+// 		weathercode: iconCode,
+// 		windspeed: windspeed,
+// 		time: currentTime,
+// 	} = current_weather
+
+// 	const {
+// 		temperature_2m_max: maxTemp,
+// 		temperature_2m_min: minTemp,
+// 		apparent_temperature_max: maxFeelsLike,
+// 		apparent_temperature_min: minFeelsLike,
+// 		precipitation_sum: precip,
+// 		weathercode: dailyWeatherCode,
+// 		time: dailyTime,
+// 	} = daily
+
+// 	const {
+// 		time: hourlyTime,
+// 		precipitation: hourlyPrecip,
+// 		temperature_2m: hourlyTemp,
+// 		weathercode: hourlyWeathercode,
+// 	} = hourly
+
+// 	return {
+
+// 			currentTemp: Math.round(currentTemp),
+// 			currentTime: currentTime * 1000,
+// 			windspeed,
+// 			iconCode,
+
+// 			highTemp: maxTemp.map((maxTemp) => Math.round(maxTemp)), // array of high temp
+// 			lowTemp: minTemp.map((minTemp) => Math.round(minTemp)),
+// 			highFeelsLike: maxFeelsLike.map((maxFeelsLike) =>
+// 				Math.round(maxFeelsLike)
+// 			), // array of apparent high temp
+// 			lowFeelsLike: minFeelsLike.map((minFeelsLike) =>
+// 				Math.round(minFeelsLike)
+// 			),
+// 			precip: Math.round(precip[0]),
+// 			dailyTime: dailyTime.map((dailyTime) => dailyTime * 1000),
+// 			dailyWeatherCode,
+
+// 			hourlyTime: hourlyTime.map((hourlyTime) => hourlyTime * 1000),
+// 			hourlyPrecip,
+// 			hourlyTemp: hourlyTemp.map((hourlyTemp) => Math.round(hourlyTemp)),
+// 			hourlyWeathercode,
+
+// 	}
+// }
+
+function parseCurrentWeather({ current_weather, daily }) {
 	const {
 		temperature: currentTemp,
 		weathercode: iconCode,
 		windspeed: windspeed,
-		is_day: dayCode,
-		time,
+		time: currentTime,
 	} = current_weather
 
 	const {
@@ -50,98 +128,108 @@ function parseWeatherData(data) {
 		temperature_2m_min: minTemp,
 		apparent_temperature_max: maxFeelsLike,
 		apparent_temperature_min: minFeelsLike,
+		precipitation_sum: precip,
+		weathercode: dailyWeatherCode,
+		time: dailyTime,
 	} = daily
 
 	return {
-		current: {
-			currentTemp: Math.round(currentTemp),
-			time: time * 1000,
-			windspeed,
-			dayCode,
-			iconCode,
-			maxFeelsLike: maxFeelsLike.map((number) => Math.round(number)),
-			minFeelsLike: minFeelsLike.map((number) => Math.round(number)),
-		},
-		daily: {
-			highTemp: Math.round(Math.max(...maxTemp)),
-			lowTemp: Math.round(Math.min(...minTemp)),
-			highFeelsLike: Math.round(maxFeelsLike),
-			lowFeelsLike: Math.round(minFeelsLike),
-		},
-		hourly: hourly,
+		// current data
+		currentTemp: Math.round(currentTemp),
+		currentTime: currentTime * 1000,
+		windspeed,
+		iconCode,
+
+		// daily data
+		dailyHighTemp: Math.round(maxTemp[0]),
+		dailyLowTemp: Math.round(minTemp[0]),
+		dailyHighFeelsLike: Math.round(maxFeelsLike[0]),
+		dailyLowFeelsLike: Math.round(minFeelsLike[0]),
+
+		// weekly data
+		weeklyHighTemp: maxTemp.map((maxTemp) => Math.round(maxTemp)), // array of high temp
+		weeklyLowTemp: minTemp.map((minTemp) => Math.round(minTemp)),
+		weeklyHighFeelsLike: maxFeelsLike.map((maxFeelsLike) =>
+			Math.round(maxFeelsLike)
+		), // array of apparent high temp
+		weeklyLowFeelsLike: minFeelsLike.map((minFeelsLike) =>
+			Math.round(minFeelsLike)
+		),
+		precip: Math.round(precip[0]),
+		dailyTime: dailyTime.map((dailyTime) => dailyTime * 1000),
+		dailyWeatherCode,
 	}
 }
 
-function dayMapFunction(dailyData) {
-	// Implement your logic here to process daily weather data
+function parseDailyWeather({ daily }) {
+	return daily.time.map((time, index) => {
+		return {
+			timestamp: time * 1000,
+			iconCode: daily.weathercode[index],
+			highTemp: Math.round(daily.temperature_2m_max[index]), // array of daily high temps
+			lowTemp: Math.round(daily.temperature_2m_min[index]),
+		}
+	})
 }
 
-function renderWeather({ current, daily, renderHourlyWeather }) {
-	// renderWeeklyWeather(data)
-	// renderHourlyWeather(data)
+// function parseHourlyWeather({ hourly, current_weather }) {
+// 	return hourly.time.map((time, index) => {
+// 			return {
+// 				hourlyTime: time * 1000,
+// 				iconCode: hourly.weathercode[index],
+// 				hourlyTemp: Math.round(hourly.temperature_2m[index]),
+// 				windspeed: Math.round(hourly.windspeed_10m[index]),
+// 				precip: Math.round(hourly.precipitation[index]),
+// 			}
+// 		}).filter(({hourlyTime}) => hourlyTime >= current_weather.time * 1000)
+
+// }
+
+function renderHourlyWeather(hourly) {
+	hourlySection.innerHTML = ""
+}
+// function dayMapFunction(dailyData) {
+// 	// Implement your logic here to process daily weather data
+// }
+
+function renderWeather({ current, daily, hourly }) {
+	// renderWeeklyWeather(daily)
+	// renderHourlyWeather(hourly)
 	renderCurrentWeather(current)
-	renderDailyWeather(daily)
+	// renderDailyWeather(daily)
 
 	// render weekly data, hourly data, etc.
 }
 
 function renderCurrentWeather(current) {
-	const currentDay = current.dayCode
-	console.log(currentDay)
-	// console.log(data.current_weather.temperature)
 	setValue("current-temp", current.currentTemp, "")
-	setValue("current-fl-high", current.maxFeelsLike[currentDay], "")
-	setValue("current-fl-low", current.minFeelsLike[currentDay], "")
-
+	setValue("current-high", current.dailyHighTemp, "")
+	setValue("current-low", current.dailyLowTemp, "")
+	setValue("current-fl-high", current.dailyHighFeelsLike, "")
+	setValue("current-fl-low", current.dailyLowFeelsLike, "")
 	setValue("current-wind", current.windspeed, "")
-	// setValue("current-low", current.lowFeelsLike, "°F")
+	setValue("current-precip", current.precip, "")
 }
 
-function renderDailyWeather(daily) {
-	setValue("current-high", daily.highTemp, "")
-	setValue("current-low", daily.lowTemp, "")
-	setValue("current-high", daily.highTemp, "")
-}
+function renderDailyWeather(daily) {}
 
-function renderWeeklyWeather(data) {
+function renderWeeklyWeather(daily) {
 	dailySection.innerHTML = ""
 
-	data.maxDailyTemp.forEach((day) => {
+	daily.highTemp.forEach((highTemp) => {
 		const element = dayCardTemplate.content.cloneNode(true)
-		setValue("temp", day, "°F", { parent: element })
-		setValue("date", DAY_FORMATTER.format(day.time), "", {
-			parent: element,
-		})
+		setValue("temp", highTemp, "", { parent: element })
+		// setValue('day','Monday','', {parent:element})
 		dailySection.append(element)
 	})
-}
 
-function renderHourlyWeather() {
-	// const currentUnixTime = Math.floor(Date.now() / 1000)
-	// function convertTime(unixTime) {
-	// 	const date = new Date(unixTime * 1000)
-	// 	return new Intl.DateTimeFormat("en-US", { hour: "numeric" }).format(
-	// 		date
-	// 	)
+	// for(let i=0;i<6;i++){
+	// 	const element2 = setValue('date', i,'')
+	// 	dailySection.append(element2)
 	// }
-
-	// const currentHour = convertTime(currentUnixTime)
-	// // console.log(currentHour[0])
-
-	let timeArray = []
-	for (let i = 0; i < 9; i++) {
-		timeArray.push(parseInt(currentHour[0]) + i)
-	}
-
-	// console.log(timeArray)
 }
-
-const dayMap = new Map()
-function dayMapfun(data) {
-	for (let i = 0; i < 7; i++) {
-		dayMap.set(i, data.maxDailyTemp[i])
-	}
-}
+const hourRowTemplate = document.getElementById("hour-row-template")
+const hourlySection = document.querySelector("[data-hour-section]")
 
 function setValue(selector, value, unit, { parent = document } = {}) {
 	parent.querySelector(`[data-${selector}]`).textContent = value + unit
